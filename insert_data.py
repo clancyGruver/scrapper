@@ -1,7 +1,7 @@
 import os.path
 import pickle
 from datetime import date,timedelta
-#from mysql import Mysql
+from mysql import Mysql
 from myquerybuilder import QueryBuilder
 
 class Beletag:
@@ -39,7 +39,7 @@ class Beletag:
 			'complecte'   : data['complecte'],
 			'description' : data['description'],
 			'site_id'     : data['item']['id'],
-			'description' : data['item']['name'],
+			'name'        : data['item']['name'],
 			'date_add'    : self.date
 		}
 		self.item(good)
@@ -94,7 +94,6 @@ class Beletag:
 
 	def good_params(self, data):
 		table = 'beletag_good_params'
-		i = 1
 		for row in data:
 			fields = ('id','count') #'category_id', 'articul'
 			where = {

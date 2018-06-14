@@ -94,8 +94,8 @@ class Proxy(object):
 		return d
 
 
-proxy = Proxy()
-proxy = proxy.get_proxy()
-print(proxy)
+# proxy = Proxy()
+# proxy = proxy.get_proxy()
+# print(proxy)
 # r = requests.get('http://speed-tester.info/check_ip.php',proxies={'http':proxy})
 # print(r.content)

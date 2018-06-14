@@ -36,7 +36,7 @@ class Parser(object):
         self.current_proxy['http'] = current_proxy
         self.current_proxy['https'] = current_proxy
 
-    ''' Счетчик прокси '''
+    ''' Счетчик прокси 
     def proxy_counter(self):
         self.pc += 1
         if self.pc == self.PROXY_LEN:
@@ -44,6 +44,7 @@ class Parser(object):
             # sleep_time = uniform(30, 35)
             # print('Отдыхаем ' + str(sleep_time))
             # sleep(sleep_time)
+    '''
 
     ''' Получение случайного юзер агента '''
     def get_user_agent(self):
@@ -295,7 +296,7 @@ class Beletag(object):
                 })
             result["colors"].append(tmp_color)
         insert_data.Beletag(result)
-        # self.scrapped('element', url)
+        self.scrapped('element', url)
         return 1
 
     # получение всех элементов со всех страниц
@@ -309,6 +310,8 @@ class Beletag(object):
             if(i == 20):
                 i = 0
                 result.extend(self.parser.execute())
+        for page_html in result:
+            self.get_elements(page_html)
         self.save('element')
 
     def scrapped(self, type, url):
@@ -338,9 +341,7 @@ class Beletag(object):
                 pickle.dump(self.pages, file)
 
     # Обработка элемента каталога
-    def parse_element(self, element):
-        print('обрабатывается элемент: ' + element + ": " + str(datetime.now()))       
-         
+    def parse_element(self):
         counter_start = 0
         counter_end = 20
         while counter_start < len(self.elements):
@@ -354,11 +355,6 @@ class Beletag(object):
                     self.scrapped('element',element)
             counter_start += 20
             counter_end += 20
-    # Запуск сбора элементов пулом в 40 процессов
-    def parse_pool_elements(self):
-        with Pool(20) as p:
-            data = p.map(self.parse_element, self.elements)
-        print(data)
 
 
 def main():
@@ -375,7 +371,7 @@ def main():
             b.get_all_elements()
     print('Обрабатываем элементы в 40 процессов')
     while len(b.elements) > 0:
-        b.parse_pool_elements()
+        b.parse_element()
     end = datetime.now()
     print('Завершено за ' + str(end-start))
 
