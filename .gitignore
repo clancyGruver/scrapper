@@ -1,0 +1,7 @@
+images
+__pycache__
+venv
+.vscode
+*.pkl
+*.txt
+\!user-agent-list!.txt
