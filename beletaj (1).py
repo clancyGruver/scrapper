@@ -66,7 +66,7 @@ class Parser(object):
         result = []
         try:            
             responses = grequests.map(self.reqs)
-            result = [resp.content for resp in responses if (resp is not None) and (resp.status_code == 200)]
+            result = [resp for resp in responses if (resp is not None) and (resp.status_code == 200)]
             if len(result) == 1:
                 return result[0]
             else:
@@ -115,7 +115,7 @@ class Beletag(object):
 
         result = []
         for a in all_a:
-            result.append(self.BASE_URL + a['href'])
+            result.append(self.BASE_URL + a['href'][1:])
         return result
 
     # Получение количества страниц c элемента меню
@@ -133,7 +133,7 @@ class Beletag(object):
         print('Собираются все страницы каталога')
         html = self.parser.add_url(self.main_catalog_link)
         html = self.parser.execute()
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html.content, 'html.parser')
         div_pages = soup.find("div", class_='pages')
         if isinstance(div_pages, type(None)):
             self.pages_count = 0
@@ -160,11 +160,11 @@ class Beletag(object):
     # Получение всех элементов каталога со страницы
     def get_elements(self, html):
         result = []
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html.content, 'html.parser')
         content = soup.find(class_='catalog-section')
         photos = content.find_all(class_='photo')
         for photo in photos:
-            ra = self.BASE_URL + photo.find(class_="base-photo")["href"]
+            ra = self.BASE_URL + photo.find(class_="base-photo")["href"][1:]
             result.append(ra)
         self.elements.extend(result)
         return len(result)
@@ -316,21 +316,20 @@ class Beletag(object):
 
     def scrapped(self, type, url):
         if type == 'element':
-            if os.path.exists(self.elements_list_name):
-                with open(self.elements_list_name, 'rb') as afile:
-                    elements = pickle.load(afile)
-            with open(self.elements_list_name, 'wb') as file:
-                elements.remove(url)
-                self.elements.remove(url)
-                pickle.dump(elements, file)
+            #if os.path.exists(self.elements_list_name):
+            #    with open(self.elements_list_name, 'rb') as afile:
+            #        self.elements = pickle.load(afile)
+            if url in self.elements:
+                with open(self.elements_list_name, 'wb') as file:
+                    self.elements.remove(url)
+                    pickle.dump(self.elements, file)
         else:
-            if os.path.exists(self.pages_list_name):
-                with open(self.pages_list_name, 'rb') as afile:
-                    pages = pickle.load(afile)
+            #if os.path.exists(self.pages_list_name):
+            #    with open(self.pages_list_name, 'rb') as afile:
+            #        self.pages = pickle.load(afile)
             with open(self.pages_list_name, 'wb') as file:
-                pages.remove(url)
                 self.pages.remove(url)
-                pickle.dump(pages, file)
+                pickle.dump(self.pages, file)
 
     def save(self, type):
         if type == 'element':
@@ -349,10 +348,10 @@ class Beletag(object):
             for element in current_dict:
                 self.parser.add_url(element)
             responses = self.parser.execute()
-            for resp in responses:                
-                res = self.parse(resp, element)
+            for resp in responses:
+                res = self.parse(resp.content, element)
                 if res == 1:
-                    self.scrapped('element',element)
+                    self.scrapped('element',resp.url)
             counter_start += 20
             counter_end += 20
 
