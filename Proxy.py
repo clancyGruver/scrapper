@@ -23,7 +23,7 @@ class Proxy(object):
 		soup = BeautifulSoup(html, 'html.parser')
 		result = soup.find_all('tr', class_="spy1x")
 		scripts = soup.find_all("script")
-		script = scripts[3].string.split(';')[:-1]
+		script = scripts[2].string.split(';')[:-1]
 		script_dict = {}
 		for s in script:
 			sss = s.split('=')

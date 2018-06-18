@@ -59,12 +59,12 @@ class Parser(object):
             timeout=30,
             proxies=self.current_proxy,
             headers=self.user_agent,
-            params=params))            
+            params=params))
 
     ''' Получение html файла '''
     def execute(self):
         result = []
-        try:            
+        try:
             responses = grequests.map(self.reqs)
             result = [resp for resp in responses if (resp is not None) and (resp.status_code == 200)]
             if len(result) == 1:
