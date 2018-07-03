@@ -12,9 +12,10 @@ class Proxy(object):
 	proxy_url = "http://spys.one/en/http-proxy-list/"
 	proxy_list = []
 	d = date.today()
-	f_name = 'proxies_'+str(d.year)+'_'+str(d.month)+'_'+str(d.day)+'.txt'
+	os.chdir(os.path.dirname(__file__))
+	f_name = os.getcwd() + 'proxies_'+str(d.year)+'_'+str(d.month)+'_'+str(d.day)+'.txt'
 	pd = d - timedelta(days=1)
-	f_prev_name = 'proxies_'+str(pd.year)+'_'+str(pd.month)+'_'+str(pd.day)+'.txt'
+	f_prev_name = os.getcwd() + 'proxies_'+str(pd.year)+'_'+str(pd.month)+'_'+str(pd.day)+'.txt'
 
 	def __init__(self):
 		payload = {'xpp':5,'xf1':0,'xf2':0,'xf4':0,'xf5':0}

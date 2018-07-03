@@ -1,7 +1,6 @@
 import os.path
 import pickle
 from datetime import date,timedelta
-from mysql import Mysql
 from myquerybuilder import QueryBuilder
 
 class Beletag:
@@ -21,8 +20,8 @@ class Beletag:
 		#Mysql connection initialization
 		self.db = QueryBuilder(
 			host="localhost",
-			user="root",
-			passwd="",
+			user="dvlpr",
+			passwd="Gi-Ingeo-1",
 			db="scrapping",
 			charset="utf8"
 		)

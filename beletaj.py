@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import os
 import gevent.monkey
 gevent.monkey.patch_all()
 import requests
@@ -18,6 +19,7 @@ import grequests
 
 
 class Parser(object):
+    reqs = []
     def __init__(self):
         print('Сбор доступных прокси')
         proxy = Proxy.Proxy()
@@ -26,30 +28,32 @@ class Parser(object):
         self.user_agents = open('user-agent-list.txt').read().split('\n')
         d = date.today()
         date_file_name = str(d.year) + '-' + str(d.month) + '-' + str(d.day)
-        self.proxy_f_name = 'proxies_' + date_file_name + '.txt'
+        os.chdir(os.path.dirname(__file__))
+        self.proxy_f_name =  os.getcwd() + 'proxies_' + date_file_name + '.txt'
 
-    def get_proxy(self):
     ''' Получение прокси '''
+    def get_proxy(self):
         current_proxy = choice(self.proxy_list)
         self.current_proxy = {}
         self.current_proxy['http'] = current_proxy
         self.current_proxy['https'] = current_proxy
 
+    ''' Счетчик прокси 
     def proxy_counter(self):
-    ''' Счетчик прокси '''
         self.pc += 1
         if self.pc == self.PROXY_LEN:
             self.pc = 0
             # sleep_time = uniform(30, 35)
             # print('Отдыхаем ' + str(sleep_time))
             # sleep(sleep_time)
+    '''
 
-    def get_user_agent(self):
     ''' Получение случайного юзер агента '''
+    def get_user_agent(self):
         self.user_agent = {'User-Agent': choice(self.user_agents)}
 
-    def add_url(self, url, use_proxy=True, params=None):
     ''' добавить урл для обработки '''
+    def add_url(self, url, use_proxy=True, params=None):
         self.get_proxy()
         self.get_user_agent()
         self.reqs.append(grequests.get(
@@ -57,23 +61,24 @@ class Parser(object):
             timeout=30,
             proxies=self.current_proxy,
             headers=self.user_agent,
-            params=params))            
+            params=params))
 
-    def execute():
     ''' Получение html файла '''
-         = []
-        try:            
+    def execute(self):
+        result = []
+        try:
             responses = grequests.map(self.reqs)
-            result = [resp.content for resp in responses if (resp is not None) and (resp.status_code == 200)]
+            result = [resp for resp in responses if (resp is not None) and (resp.status_code == 200)]
             if len(result) == 1:
                 return result[0]
             else:
                 return result
         except (requests.exceptions.Timeout, requests.exceptions.ProxyError, requests.exceptions.ConnectionError):
                 self.proxy_error()
+        self.reqs = []
 
-    def proxy_error(self):
     ''' Отработка при проблемме прокси '''
+    def proxy_error(self):
         self.proxy_list.remove(self.current_proxy['http'])
         self.PROXY_LEN = len(self.proxy_list)
         with open(self.proxy_f_name,'wb') as f:
@@ -94,8 +99,9 @@ class Beletag(object):
         self.parser = Parser()
         d = date.today()
         date_file_name = str(d.year) + '-' + str(d.month) + '-' + str(d.day)
-        self.elements_list_name = 'elements-' + date_file_name + '.pkl'
-        self.pages_list_name = 'pages-' + date_file_name + '.pkl'
+        self.elements_list_name =  os.getcwd() + 'elements-' + date_file_name + '.pkl'
+        self.pages_list_name =  os.getcwd() + 'pages-' + date_file_name + '.pkl'
+        self.pages_count = 0
 
         if os.path.exists(self.elements_list_name):
             with open(self.elements_list_name, 'rb') as afile:
@@ -112,7 +118,7 @@ class Beletag(object):
 
         result = []
         for a in all_a:
-            result.append(self.BASE_URL + a['href'])
+            result.append(self.BASE_URL + a['href'][1:])
         return result
 
     # Получение количества страниц c элемента меню
@@ -128,12 +134,10 @@ class Beletag(object):
     def get_all_pages(self):
         # parse menu_lik
         print('Собираются все страницы каталога')
-        html = parser.add_url(self.main_catalog_link)
-        html = parser.execute()
-        soup = BeautifulSoup(html, 'html.parser')
+        html = self.parser.add_url(self.main_catalog_link)
+        html = self.parser.execute()
+        soup = BeautifulSoup(html.content, 'html.parser')
         div_pages = soup.find("div", class_='pages')
-        if isinstance(div_pages, type(None)):
-            self.pages_count = 0
         count = div_pages.find_all('a')
         pages_count = int(count[-1].text)
         if pages_count < 1:
@@ -144,9 +148,31 @@ class Beletag(object):
             self.pages.append(self.main_catalog_link + "&PAGEN_1=" + str(x))
         self.save('page')
 
+    #Добавление стрницы категории по id
+    def add_catalog_page_by_cat_id(self, id):
+        catalog_link = 'https://shop.beletag.com/catalog/{}/?pagecount=90&mode=ajax'.format(id)
+        self.parser.add_url(catalog_link)
+
+    # Получение всех страниц каталога по id
+    def get_all_pages_by_cat_id(self, id):
+        # parse menu_lik
+        all_html = self.parser.execute()
+        for html in all_html:
+            soup = BeautifulSoup(html.content, 'html.parser')
+            div_pages = soup.find("div", class_='pages')
+            if isinstance(div_pages, type(None)):
+                pages_count = 1
+            else:
+                count = div_pages.find_all('a')
+                pages_count = int(count[-1].text)
+            self.pages_count += pages_count
+            for x in range(1, pages_count + 1):
+                self.pages.append(html.url + "&PAGEN_1=" + str(x))
+        self.save('page')
+
     # Сохранение картинки
     def save_image(self, img_url, name):
-        if os.path.exists("images/" + name):
+        if os.path.exists(os.getcwd() + "images/" + name):
             return
         url = self.BASE_URL + img_url
         img = requests.get(url, stream=True)
@@ -157,11 +183,11 @@ class Beletag(object):
     # Получение всех элементов каталога со страницы
     def get_elements(self, html):
         result = []
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html.content, 'html.parser')
         content = soup.find(class_='catalog-section')
         photos = content.find_all(class_='photo')
         for photo in photos:
-            ra = self.BASE_URL + photo.find(class_="base-photo")["href"]
+            ra = self.BASE_URL + photo.find(class_="base-photo")["href"][1:]
             result.append(ra)
         self.elements.extend(result)
         return len(result)
@@ -293,39 +319,43 @@ class Beletag(object):
                 })
             result["colors"].append(tmp_color)
         insert_data.Beletag(result)
-        # self.scrapped('element', url)
+        self.scrapped('element', url)
         return 1
 
     # получение всех элементов со всех страниц
     def get_all_elements(self):
         result = []
+        pages_count = len(self.pages)
         i = 0
         for x in self.pages:            
             self.parser.add_url(x)
             i += 1
-            self.scrapped('page',x)
-            if(i == 20):
+            #uncomment it
+            #self.scrapped('page',x)
+            if (i == 20) or (i == pages_count):
+                pages_count -= i
                 i = 0
                 result.extend(self.parser.execute())
+        for page_html in result:
+            self.get_elements(page_html)
         self.save('element')
 
     def scrapped(self, type, url):
         if type == 'element':
-            if os.path.exists(self.elements_list_name):
-                with open(self.elements_list_name, 'rb') as afile:
-                    elements = pickle.load(afile)
-            with open(self.elements_list_name, 'wb') as file:
-                elements.remove(url)
-                self.elements.remove(url)
-                pickle.dump(elements, file)
+            #if os.path.exists(self.elements_list_name):
+            #    with open(self.elements_list_name, 'rb') as afile:
+            #        self.elements = pickle.load(afile)
+            if url in self.elements:
+                with open(self.elements_list_name, 'wb') as file:
+                    self.elements.remove(url)
+                    pickle.dump(self.elements, file)
         else:
-            if os.path.exists(self.pages_list_name):
-                with open(self.pages_list_name, 'rb') as afile:
-                    pages = pickle.load(afile)
+            #if os.path.exists(self.pages_list_name):
+            #    with open(self.pages_list_name, 'rb') as afile:
+            #        self.pages = pickle.load(afile)
             with open(self.pages_list_name, 'wb') as file:
-                pages.remove(url)
                 self.pages.remove(url)
-                pickle.dump(pages, file)
+                pickle.dump(self.pages, file)
 
     def save(self, type):
         if type == 'element':
@@ -336,9 +366,7 @@ class Beletag(object):
                 pickle.dump(self.pages, file)
 
     # Обработка элемента каталога
-    def parse_element(self, element):
-        print('обрабатывается элемент: ' + element + ": " + str(datetime.now()))       
-         
+    def parse_element(self):
         counter_start = 0
         counter_end = 20
         while counter_start < len(self.elements):
@@ -346,17 +374,12 @@ class Beletag(object):
             for element in current_dict:
                 self.parser.add_url(element)
             responses = self.parser.execute()
-            for resp in responses:                
-                res = self.parse(resp, element)
+            for resp in responses:
+                res = self.parse(resp.content, element)
                 if res == 1:
-                    self.scrapped('element',element)
+                    self.scrapped('element',resp.url)
             counter_start += 20
             counter_end += 20
-    # Запуск сбора элементов пулом в 40 процессов
-    def parse_pool_elements(self):
-        with Pool(20) as p:
-            data = p.map(self.parse_element, self.elements)
-        print(data)
 
 
 def main():
@@ -364,16 +387,52 @@ def main():
     print('Старт')
     b = Beletag()
     print('Всего ' + str(b.parser.PROXY_LEN) + 'проксей')
+    categories = {
+        "Мужское":{
+            "485":"Брюки,бриджи", 
+            "771":"Спорт", 
+            "486":"Спорт", 
+            "559":"Бельевая группа", 
+            "487":"Шорты", 
+            "489":"Джемпера", 
+            "490":"Футболки", 
+            "634":"Поло", 
+            "715":"Комплекты"
+        },
+        "Женское":{
+            "734":"Базовый ассортимент", 
+            "602":"Бельевая группа",
+            "498":"Блузки, рубашки",
+            "599":"Брюки, бриджи",
+            "601":"Водолазки",
+            "500":"Джемпера",
+            "474":"Майки",
+            "496":"Платья, сарафаны",
+            "770":"Спорт",
+            "598":"Толстовки, куртки",
+            "497":"Футболки",
+            "501":"Шорты",
+            "502":"Юбки"
+        },    
+        "Общее":{
+            "510":"Одежда для дома", 
+            "661":"Термобельё"
+        }         
+    }
     if len(b.pages) < 1:
         print('Получаем список страниц')
-        b.get_all_pages()
+        for cat in categories:
+            for catId in categories[cat]:
+                b.add_catalog_page_by_cat_id(catId)
+        b.get_all_pages_by_cat_id(catId)
+    print(b.pages)
     if len(b.elements) < 1:
         print('Получаем список элементов')
         while len(b.pages) > 1:
             b.get_all_elements()
     print('Обрабатываем элементы в 40 процессов')
     while len(b.elements) > 0:
-        b.parse_pool_elements()
+        b.parse_element()
     end = datetime.now()
     print('Завершено за ' + str(end-start))
 
